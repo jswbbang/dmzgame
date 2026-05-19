@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMZ, 미래를 향한 나의 선택</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #game-container {
+            background: white;
+            width: 800px;
+            max-width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            text-align: center;
+            position: relative;
+        }
+        #status-bar {
+            display: flex;
+            justify-content: space-between;
+            background: #e9ecef;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .stat-item {
+            background: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        #progress {
+            font-size: 0.9rem;
+            color: #777;
+            margin-bottom: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+        #story-title {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.6rem;
+        }
+        #story-text {
+            font-size: 1.15rem;
+            line-height: 1.7;
+            margin-bottom: 25px;
+            text-align: left;
+            background: #fafafa;
+            padding: 25px;
+            border-left: 6px solid #4a90e2;
+            border-radius: 8px;
+            word-break: keep-all;
+        }
+        #knowledge-box {
+            font-size: 1rem;
+            color: #555;
+            background: #fff8e1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: left;
+            border: 1px solid #ffe082;
+            line-height: 1.6;
+        }
+        .choice-btn {
+            display: block;
+            width: 100%;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 18px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            line-height: 1.4;
+        }
+        .choice-btn:hover {
+            background: #357abd;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        .ending-btn {
+            background: #e67e22;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .ending-btn:hover {
+            background: #d35400;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="status-bar">
+        <div class="stat-item">🕊️ 평화: <span id="stat-peace">0</span></div>
+        <div class="stat-item">🛡️ 안보: <span id="stat-security">0</span></div>
+        <div class="stat-item">🌿 생태: <span id="stat-eco">0</span></div>
+        <div class="stat-item">💰 경제: <span id="stat-economy">0</span></div>
+        <div class="stat-item" style="color: #e74c3c;">⚠️ 위험: <span id="stat-risk">0</span></div>
+    </div>
+
+    <div id="progress">진행도: 0 / 11 라운드</div>
+    <h2 id="story-title">게임을 준비 중입니다...</h2>
+    <div id="story-text"></div>
+    <div id="knowledge-box" class="hidden"></div>
+    
+    <div id="choices-container"></div>
+</div>
+
+<script>
+    let stats = {
+        peace: 0,
+        security: 0,
+        eco: 0,
+        economy: 0,
+        risk: 0
+    };
+    
+    let currentRound = 0;
+
+    // 총 11라운드의 꼼꼼하고 논란 없는 스토리 데이터
+    const storyData = [
+        {
+            title: "라운드 1. [1950년대] 비극의 끝, 그리고 철책선의 시작",
+            text: "기나긴 전쟁이 멈추고 1953년 휴전 협정이 맺어졌습니다. 한반도의 허리에는 철조망이 쳐졌고, 많은 사람들이 고향을 떠나거나 낯선 경계선 근처에서 새로운 삶을 시작해야 했습니다. 당신은 어떤 배경을 가진 인물입니까?",
+            knowledge: "1953년 7월 27일 맺어진 정전협정에 따라 남북은 군사분계선(MDL)을 기준으로 각각 2km씩 뒤로 물러나 폭 4km의 비무장지대(DMZ)를 설정했습니다. 이는 무력 충돌을 막기 위한 완충 지대입니다.",
+            choices: [
+                { text: "A. 잃어버린 고향을 그리워하며 평화를 염원하는 실향민 가정의 자녀 (평화 +2)", effect: { peace: 2 } },
+                { text: "B. 대대로 접경지역에서 농사를 지으며 마을의 안전을 지키려는 토박이의 자녀 (안보 +1, 생태 +1)", effect: { security: 1, eco: 1 } },
+                { text: "C. 한반도의 지리와 자연환경을 탐구하는 학자의 자녀 (생태 +2)", effect: { eco: 2 } }
+            ]
+        },
+        {
+            title: "라운드 2. [1960년대] 민간인 통제 구역의 일상",
+            text: "철책선 남쪽으로 민간인 통제선(민통선)이 생겼습니다. 당신의 가족이 농사를 짓는 논밭은 이 통제선 안쪽에 있습니다. 매일 아침 엄격한 출입 절차를 거쳐야만 들어갈 수 있습니다. 오늘따라 검문이 더욱 길어집니다.",
+            knowledge: "민간인통제선은 DMZ 남방한계선으로부터 일정 거리 남쪽에 그어진 선입니다. 군사 시설을 보호하고 군 작전의 원활한 수행을 위해 민간인의 출입을 엄격하게 제한하는 구역입니다.",
+            choices: [
+                { text: "A. 군 작전과 마을의 안전이 최우선이므로, 시간이 걸려도 차분히 규정대로 검문에 협조한다. (안보 +2)", effect: { security: 2 } },
+                { text: "B. 출입 지연으로 농산물이 상할 수 있으니, 주민들의 피해를 줄이기 위한 효율적인 출입증 제도를 건의한다. (경제 +2)", effect: { economy: 2 } },
+                { text: "C. 초소 군인들의 고충도 이해하며, 주민들과 군인들이 서로 돕고 이해하는 간담회를 주최한다. (평화 +2)", effect: { peace: 2 } }
+            ]
+        },
+        {
+            title: "라운드 3. [1970년대] 땅속에 남겨진 전쟁의 흔적",
+            text: "가을 추수를 돕기 위해 민통선 근처 산비탈을 오르던 중, 녹이 슨 오래된 철모와 6.25 전쟁 당시의 것으로 보이는 유품들을 발견했습니다. 이 주변은 과거 치열한 고지전이 벌어졌던 곳입니다.",
+            knowledge: "DMZ와 접경지역 일대에는 전쟁 당시 전사한 수많은 국군과 UN군, 그리고 북한군과 중공군의 유해가 아직도 잠들어 있습니다. 오늘날 유해 발굴은 평화를 향한 중요한 인도주의적 활동입니다.",
+            choices: [
+                { text: "A. 유품이 발견된 곳 주변에 폭발물이 있을 수 있으므로 즉시 물러나 군부대에 신고한다. (안보 +2, 생태 +1)", effect: { security: 2, eco: 1 } },
+                { text: "B. 호국 영령들의 넋을 기리고 평화의 소중함을 알리기 위해, 절차를 거쳐 지역 평화 역사관에 기증한다. (평화 +2, 안보 +1)", effect: { peace: 2, security: 1 } }
+            ]
+        },
+        {
+            title: "라운드 4. [1980년대] 인간이 떠난 자리에 찾아온 자연",
+            text: "사람의 발길이 끊긴 지 30년이 넘은 DMZ 주변. 우연히 망원경으로 철책선 너머를 보던 당신은, 남한에서 멸종된 줄 알았던 희귀한 '두루미' 떼가 습지에서 평화롭게 쉬고 있는 것을 목격합니다.",
+            knowledge: "DMZ는 역설적이게도 분단으로 인해 인간의 간섭이 차단되면서 멸종위기 야생동물들의 세계적인 낙원이 되었습니다. 환경부 조사에 따르면 한반도에 서식하는 동식물의 상당수가 이곳에서 발견됩니다.",
+            choices: [
+                { text: "A. 이 훌륭한 자연이 훼손되지 않도록, 주변 지역을 철새 보호 구역으로 지정하자고 환경 단체와 연대한다. (생태 +2)", effect: { eco: 2 } },
+                { text: "B. 희귀 철새들을 멀리서 관찰할 수 있는 친환경 생태 탐조대를 만들어 지역의 수익 창출을 돕는다. (경제 +1, 생태 +1)", effect: { economy: 1, eco: 1 } },
+                { text: "C. 보호도 좋지만 저곳은 군사 지역이므로, 군 작전에 방해되지 않는 선에서만 관찰해야 한다고 주장한다. (안보 +2)", effect: { security: 2 } }
+            ]
+        },
+        {
+            title: "라운드 5. [1990년대] 끊어진 철길, 경의선을 바라보며",
+            text: "파주 임진각에 서서 '철마는 달리고 싶다'는 팻말과 함께 멈춰선 낡은 증기 기관차를 바라봅니다. 과거 서울과 신의주를 이었던 이 철도는 남북 분단 이후 반세기 넘게 달리지 못하고 있습니다.",
+            knowledge: "경의선은 1906년 개통되어 한반도 서부를 남북으로 관통하던 철도입니다. 분단으로 운행이 중단되었으나, 2000년 남북정상회담 이후 복원 사업이 시작되어 끊어진 핏줄을 잇는 평화의 상징이 되었습니다.",
+            choices: [
+                { text: "A. 철도가 다시 연결되어 유라시아 대륙까지 이어지면 엄청난 물류와 경제적 이익을 가져올 것이라 확신한다. (경제 +2)", effect: { economy: 2 } },
+                { text: "B. 기차가 다시 달린다는 것은 남과 북이 서로의 마음을 열고 평화롭게 교류하는 첫걸음이라 생각하며 눈시울을 붉힌다. (평화 +2)", effect: { peace: 2 } }
+            ]
+        },
+        {
+            title: "라운드 6. [2000년대] 지뢰밭에서의 딜레마",
+            text: "접경지역 생태 조사를 돕던 중, 산길 옆에 설치된 붉은색 '지뢰(MINE)' 표지판 너머 철망에 산양이 다리가 낀 채 울부짖고 있는 것을 발견했습니다. 다가가는 것은 매우 위험한 상황입니다.",
+            knowledge: "DMZ 및 민통선 지역에는 전쟁 중 매설된 수많은 대인지뢰가 남아있습니다. 이는 주민들과 야생동물의 안전을 위협하는 가장 큰 문제로, 국제사회와 함께 안전한 지뢰 제거 방안을 꾸준히 연구 중입니다.",
+            choices: [
+                { text: "A. 절대 안전선을 넘지 않고 즉시 군부대와 소방에 연락해 전문가들이 구조하도록 기다린다. (안보 +2)", effect: { security: 2 } },
+                { text: "B. 불쌍한 생명을 구하고 싶은 마음에, 주변의 긴 나뭇가지를 찾아 펜스 밖에서 지렛대처럼 이용해 철망을 벌려본다. (생태 +2, 위험 +1)", effect: { eco: 2, risk: 1 } },
+                { text: "C. 산양이 죽어가는 걸 볼 수 없어, 지뢰 표지판을 무시하고 철망을 넘어가 직접 구해준다. (위험 +3) - ※주의: 매우 위험한 선택", effect: { risk: 3 } }
+            ]
+        },
+        {
+            title: "라운드 7. [2010년대] 대성동 '자유의 마을'의 미래",
+            text: "DMZ 내부에 유일하게 존재하는 민간인 거주지 '대성동 자유의 마을'. 낡은 마을 시설을 개선하기 위한 프로젝트에 당신이 참여하게 되었습니다. 마을을 어떤 방향으로 가꿀 계획인가요?",
+            knowledge: "대성동 자유의 마을은 1953년 정전협정 규정에 따라 남방한계선 안쪽 DMZ 내에 조성된 유일한 남한 마을입니다. 유엔군 사령부의 관할 아래 있으며 분단의 최전선에서 살아가는 상징적인 공간입니다.",
+            choices: [
+                { text: "A. 마을의 농산물을 특산품화하고, 제한된 인원에게만 허용되는 특별한 안보 관광 코스를 개발한다. (경제 +2, 안보 +1)", effect: { economy: 2, security: 1 } },
+                { text: "B. 마을을 전 세계 평화 연구자들을 위한 교류의 장이자, 아픔을 딛고 일어선 평화의 상징 마을로 브랜딩한다. (평화 +3)", effect: { peace: 3 } }
+            ]
+        },
+        {
+            title: "라운드 8. [2020년대] DMZ 평화둘레길의 개방",
+            text: "오랜 시간 닫혀있던 DMZ 일부 구역을 국민들이 직접 걸어볼 수 있는 'DMZ 평화둘레길'이 열렸습니다. 탐방로 코스 설계를 맡은 당신은 어떤 부분에 가장 중점을 두겠습니까?",
+            knowledge: "DMZ 평화둘레길은 철거된 감시초소(GP) 등 전쟁의 흔적과 아름다운 생태를 직접 체험할 수 있도록 조성된 걷기 길입니다. 생태계 훼손을 막기 위해 철저히 지정된 경로로만 이동해야 합니다.",
+            choices: [
+                { text: "A. 탐방객들이 편하게 걸을 수 있도록 데크를 깔고 주변에 상권을 조성하여 지역 경제를 활성화한다. (경제 +2, 생태 -1)", effect: { economy: 2, eco: -1 } },
+                { text: "B. 자연을 절대 훼손하지 않도록 기존의 군 순찰로만 활용하며, 하루 방문 인원을 엄격히 제한한다. (생태 +2, 안보 +1)", effect: { eco: 2, security: 1 } },
+                { text: "C. 철책선과 과거 초소(GP)의 모습을 원형 그대로 보존하여, 전쟁의 교훈을 새기는 안보 교육에 집중한다. (안보 +2, 평화 +1)", effect: { security: 2, peace: 1 } }
+            ]
+        },
+        {
+            title: "라운드 9. [가까운 미래] 철책선을 녹여 만든 종",
+            text: "군사적 긴장이 완화되면서 필요성이 줄어든 남방한계선 일부 구간의 낡은 철책선을 철거하게 되었습니다. 거둬들인 수많은 고철(철망과 기둥)을 어떻게 활용하면 좋을까요?",
+            knowledge: "과거에도 남북의 긴장이 완화될 때 철책을 일부 철거한 적이 있습니다. 분단의 상징이었던 차가운 철망을 녹여 평화의 종이나 예술 작품을 만드는 프로젝트는 실제로 전 세계에 큰 감동을 주었습니다.",
+            choices: [
+                { text: "A. 모두 녹여 '평화의 종'과 평화 기념비를 만들어 유엔(UN)을 비롯한 전 세계 평화 기구에 선물한다. (평화 +2, 경제 +1)", effect: { peace: 2, economy: 1 } },
+                { text: "B. 역사의 아픔을 잊지 않도록 철책선의 형태를 남겨 전국 학교에 안보 및 역사 교육용 전시물로 배포한다. (안보 +2)", effect: { security: 2 } },
+                { text: "C. 고철을 산업 자재로 재활용하여 그 수익금을 접경지역 환경 정화와 지뢰 제거 작업 비용으로 쓴다. (생태 +1, 경제 +1)", effect: { eco: 1, economy: 1 } }
+            ]
+        },
+        {
+            title: "라운드 10. [미래 기술] 메타버스로 만나는 DMZ",
+            text: "전 세계 사람들이 한국에 오지 않고도 DMZ를 경험하고 배울 수 있도록, 최첨단 '디지털 트윈(가상 세계)' 기술을 이용해 DMZ를 메타버스 공간에 똑같이 구현하려 합니다. 주요 테마를 선택해 주세요.",
+            knowledge: "물리적 출입이 제한된 공간일수록 가상 현실(VR)과 메타버스 기술의 활용도가 높습니다. 이를 통해 생태계를 전혀 훼손하지 않으면서도 전 세계인에게 교육적 메시지를 효과적으로 전달할 수 있습니다.",
+            choices: [
+                { text: "A. AI 가이드와 함께 희귀 동식물의 서식지를 가상으로 탐험하며 자연의 소중함을 배우는 '생태 에듀테인먼트'. (생태 +2, 경제 +1)", effect: { eco: 2, economy: 1 } },
+                { text: "B. 한국 전쟁의 역사부터 남북 화해의 과정까지 체험하며 세계 평화의 가치를 토론하는 '글로벌 평화 포럼장'. (평화 +2, 안보 +1)", effect: { peace: 2, security: 1 } }
+            ]
+        },
+        {
+            title: "라운드 11. [최종 라운드] 세계 평화의 중심, DMZ 마스터플랜",
+            text: "마침내 한반도에 항구적인 평화가 정착하는 시대가 다가왔습니다. 국제사회는 DMZ의 최종적인 활용 방안에 대해 한국 정부의 결정을 기다리고 있습니다. 당신이 제안하는 최종 비전은 무엇입니까?",
+            knowledge: "DMZ의 미래는 남북의 문제를 넘어 전 인류의 유산으로서 어떻게 활용될 것인지가 핵심입니다. 자연 보존, 경제 거점, 역사적 평화 구역 등 우리가 어떤 가치에 우선순위를 두느냐에 따라 미래가 결정됩니다.",
+            choices: [
+                { text: "A. [절대 보존] 인간의 개발을 전면 금지하고 지구상 마지막 생물 다양성의 보고로서 유네스코(UNESCO) 자연 유산으로 영구 보존한다. (생태 +3, 평화 +1)", effect: { eco: 3, peace: 1 } },
+                { text: "B. [평화 경제 거점] 남과 북, 그리고 유라시아를 잇는 친환경 스마트 물류 허브를 건설하여 한반도를 세계 경제의 중심으로 이끈다. (경제 +3, 평화 +1)", effect: { economy: 3, peace: 1 } },
+                { text: "C. [안보와 평화의 융합] 다국적 평화기구(UN)가 주둔하는 세계 평화 연구 도시를 건설하여 다시는 전쟁이 일어날 수 없도록 제도화한다. (안보 +2, 평화 +2)", effect: { security: 2, peace: 2 } }
+            ]
+        }
+    ];
+
+    function updateUI() {
+        // 스탯 업데이트
+        document.getElementById("stat-peace").innerText = stats.peace;
+        document.getElementById("stat-security").innerText = stats.security;
+        document.getElementById("stat-eco").innerText = stats.eco;
+        document.getElementById("stat-economy").innerText = stats.economy;
+        document.getElementById("stat-risk").innerText = stats.risk;
+
+        // 1. 배드엔딩 (위험 수치 초과 시 즉시 종료)
+        if (stats.risk >= 3) {
+            showEnding(
+                "엔딩 1. 🛑 지뢰 구역 안전사고 발생 (배드 엔딩)",
+                "경고를 무시하고 위험 구역에 진입하여 큰 사고를 당했습니다. DMZ와 민통선 일대의 미확인 지뢰는 아직도 진행 중인 위험입니다. 생명을 아끼는 마음도 중요하지만, 정해진 안전 수칙과 안보 규정을 철저히 지키는 것이 최우선임을 아프게 깨닫습니다."
+            );
+            return;
+        }
+
+        // 11라운드 종료 시 엔딩 계산
+        if (currentRound >= storyData.length) {
+            calculateFinalEnding();
+            return;
+        }
+
+        // 라운드 정보 업데이트
+        const roundData = storyData[currentRound];
+        document.getElementById("progress").innerText = `진행도: ${currentRound + 1} / 11 라운드`;
+        document.getElementById("story-title").innerText = roundData.title;
+        document.getElementById("story-text").innerText = roundData.text;
+
+        // 지식 더하기 박스
+        const kb = document.getElementById("knowledge-box");
+        kb.innerText = "💡 지식 더하기: " + roundData.knowledge;
+        kb.classList.remove("hidden");
+
+        // 선택지 버튼 생성
+        const choicesContainer = document.getElementById("choices-container");
+        choicesContainer.innerHTML = ""; 
+
+        roundData.choices.forEach((choice, index) => {
+            const btn = document.createElement("button");
+            btn.className = "choice-btn";
+            btn.innerText = choice.text;
+            btn.onclick = () => selectChoice(choice.effect);
+            choicesContainer.appendChild(btn);
+        });
+    }
+
+    function selectChoice(effect) {
+        if (effect.peace) stats.peace += effect.peace;
+        if (effect.security) stats.security += effect.security;
+        if (effect.eco) stats.eco += effect.eco;
+        if (effect.economy) stats.economy += effect.economy;
+        if (effect.risk) stats.risk += effect.risk;
+        
+        currentRound++;
+        updateUI();
+    }
+
+    // 위험 수치 초과 배드엔딩 1개를 제외한 나머지 10개의 세분화된 엔딩
+    function calculateFinalEnding() {
+        // 4대 주요 스탯 (위험 제외) 정렬
+        const statEntries = [
+            { key: 'peace', val: stats.peace },
+            { key: 'security', val: stats.security },
+            { key: 'eco', val: stats.eco },
+            { key: 'economy', val: stats.economy }
+        ];
+        
+        // 내림차순 정렬 (값이 큰 순서)
+        statEntries.sort((a, b) => b.val - a.val);
+
+        const top1 = statEntries[0].key;
+        const top2 = statEntries[1].key;
+        const lowest = statEntries[3].val;
+
+        let endingTitle = "";
+        let endingText = "";
+
+        // 엔딩 2. 노벨 평화상 (모든 스탯이 균형있게 높음 - 조건: 가장 낮은 스탯도 특정 수치 이상)
+        if (lowest >= 3) {
+            endingTitle = "엔딩 2. 🏆 세계를 감동시킨 노벨평화상 수상자 (히든 엔딩)";
+            endingText = "자연을 보호하고(생태), 국가의 안전을 보장하며(안보), 경제적 가치 창출과 남북의 화해(평화)를 완벽하게 조율해 낸 당신! 당신의 균형 잡힌 리더십 덕분에 DMZ는 세계 평화의 상징이 되었고, 그 공로를 인정받아 노벨평화상을 수상합니다.";
+        }
+        else if (top1 === 'eco') {
+            if (top2 === 'peace') {
+                endingTitle = "엔딩 3. 🌿 유네스코 세계자연유산 관리자";
+                endingText = "당신의 헌신으로 인간의 상처가 남긴 DMZ는 세계 최고의 '생태 평화 구역'으로 지정되었습니다. 전 세계 생태학자들이 당신의 연구를 배우기 위해 이곳을 찾습니다.";
+            } else {
+                endingTitle = "엔딩 4. 🦌 민통선 야생동물 특별 구조대장";
+                endingText = "지뢰 등 위험 요소로부터 희귀 야생동물들을 지키기 위해 군 당국과 협력하는 야생동물 구조대를 창설했습니다. 안보와 환경을 동시에 지키는 훌륭한 전문가가 되었습니다.";
+            }
+        }
+        else if (top1 === 'economy') {
+            if (top2 === 'peace') {
+                endingTitle = "엔딩 5. 🚆 유라시아 횡단열차 1호 기관장";
+                endingText = "분단의 상징이었던 DMZ를 뚫고 마침내 철도가 열렸습니다. 당신은 한국을 출발해 북한을 거쳐 유럽까지 물류를 싣고 달리는 유라시아 횡단 열차의 역사적인 첫 기관장이 되었습니다.";
+            } else {
+                endingTitle = "엔딩 6. 🏙️ DMZ 스마트 친환경 도시 설계자";
+                endingText = "경제 발전과 환경 보존을 결합하여, 남과 북이 공동으로 운영하는 최첨단 친환경 스마트 시티를 DMZ 인근에 설계했습니다. 기술과 경제로 평화를 증명해 냈습니다.";
+            }
+        }
+        else if (top1 === 'peace') {
+            if (top2 === 'security') {
+                endingTitle = "엔딩 7. 🏛️ 접경지역 세계 평화 박물관 관장";
+                endingText = "전쟁의 참혹함과 분단의 아픔을 객관적으로 기록하고 보존하는 세계 최대 규모의 평화 박물관을 건립했습니다. 확고한 안보 의식 위에 세워진 진정한 평화의 의미를 전파합니다.";
+            } else {
+                endingTitle = "엔딩 8. 🕊️ UN(유엔) DMZ 평화 홍보대사";
+                endingText = "오직 대화와 포용으로 평화를 위해 헌신한 결과, UN이 임명한 공식 평화 홍보대사가 되었습니다. 당신은 전 세계 분쟁 지역을 다니며 DMZ의 평화 정착 사례를 강연합니다.";
+            }
+        }
+        else if (top1 === 'security') {
+            if (top2 === 'economy') {
+                endingTitle = "엔딩 9. 🛰️ 최첨단 국방 인공지능(AI) 시스템 개발자";
+                endingText = "군인들이 직접 철책선을 돌며 겪는 위험을 줄이고자, 최첨단 드론과 AI를 결합한 과학화 경계 시스템을 개발했습니다. 국가 안보를 혁신적으로 끌어올린 경제적 가치 창출자입니다.";
+            } else {
+                endingTitle = "엔딩 10. 🛡️ 다국적 평화유지군(PKO) 총사령관";
+                endingText = "투철한 안보 의식과 사명감을 바탕으로 한반도의 평화를 무력 충돌 없이 굳건하게 지켜냈습니다. 그 능력을 세계적으로 인정받아 UN 평화유지군을 이끄는 사령관으로 임명됩니다.";
+            }
+        }
+        else {
+            // 그 외의 경우 (수치가 애매하거나 균형 잡혔으나 노벨상 조건에 못 미침)
+            endingTitle = "엔딩 11. 🌾 대성동 '자유의 마을' 평화 촌장";
+            endingText = "어느 한쪽에 치우치지 않고 마을의 일상을 지켜온 당신. DMZ 안에서 묵묵히 통일과 평화를 준비하는 유일한 마을의 촌장이 되어, 오늘도 조용한 일상의 위대함을 실천합니다.";
+        }
+
+        showEnding(endingTitle, endingText);
+    }
+
+    function showEnding(title, text) {
+        document.getElementById("progress").innerText = "게임 종료 - 결과 창";
+        document.getElementById("story-title").innerText = title;
+        document.getElementById("story-text").innerText = text;
+        
+        // 최종 스탯 분석 요약 추가
+        let finalAnalysis = `<br><br><strong>[최종 나의 성향 분석]</strong><br>`;
+        finalAnalysis += `🕊️ 평화 기여도: ${stats.peace} | 🛡️ 안보 의식: ${stats.security} <br>`;
+        finalAnalysis += `🌿 생태 보존: ${stats.eco} | 💰 경제 가치: ${stats.economy}`;
+        document.getElementById("story-text").innerHTML += finalAnalysis;
+
+        document.getElementById("knowledge-box").classList.add("hidden");
+        document.getElementById("choices-container").innerHTML = 
+            "<button class='choice-btn ending-btn' onclick='location.reload()'>🎮 다른 선택으로 다시 플레이하기 (수업 복귀)</button>";
+    }
+
+    // 게임 시작 초기화
+    updateUI();
+</script>
+
+</body>
+</html>
